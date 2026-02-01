@@ -1,0 +1,24 @@
+.DS_Store
+
+# Xcode
+DerivedData/
+*.xcuserstate
+*.xcuserdata/
+*.moved-aside
+*.xcuserdatad
+*.xccheckout
+*.xcscmblueprint
+
+# Build artifacts
+build/
+*.dSYM
+*.dSYM.zip
+*.dSYM.tar.gz
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
