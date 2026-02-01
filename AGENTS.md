@@ -2,6 +2,12 @@
 
 This repository builds **iOS (UIKit)** and **macOS (AppKit)** apps in **Swift** using **MVC**.
 
+**Required:** The project must use a single app target that supports multiple destinations (iOS + macOS). Separate iOS and macOS targets are prohibited.
+
+**Clarification:** While there is only one app target, individual files may use **target membership** to limit platform-specific code (iOS vs macOS) when necessary.
+
+**Required:** Storyboards and XIBs are not allowed. All UI must be created programmatically.
+
 **Controllers coordinate. Logic lives on the side.**
 - View/ViewController: UI setup, event wiring, snapshot application, navigation.
 - Side controllers/services: loading, mutation, grouping/sectioning, business rules.
@@ -367,12 +373,13 @@ This keeps core logic testable, reusable, and independent of UI frameworks.
 
 ### Structure
 - Use a consistent project structure with folder layout determined by **app features** (feature-first), not by file type.
-- Keep iOS and macOS app targets separate, and keep shared logic in the Core SPM package.
+- **Required**: Internal SPM packages must be integrated as local, in-repo packages and edited from within the same Xcode project. Remote Git dependencies are reserved for third-party libraries only.
 
 Suggested high-level layout:
 
-- `Apps/MyProduct-UIKit/<FeatureName>/...`
-- `Apps/MyProduct-AppKit/<FeatureName>/...`
+- `Code/macOS/<FeatureName>/...`
+- `Code/iOS/<FeatureName>/...`
+- `Code/UserInterface/<FeatureName>/...` - if possible to reuse some element (e.g. CALayer)
 - `Packages/Core/Sources/<FeatureName>/...`
 - `Packages/Core/Tests/<FeatureName>/Tests/...`
 
