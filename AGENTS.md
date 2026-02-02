@@ -318,6 +318,7 @@ final class UsersViewController: NSViewController {
 Core Data lists use **`NSFetchedResultsController`** for change notifications, then apply a snapshot.
 
 ### Rules
+- If a controller’s underlying data is Core Data, it must use `NSFetchedResultsController` for change tracking. Keep the controller’s public API stable (e.g., `willChange`, `didChange`, sectioned data model) and avoid exposing FRC types to UI.
 - FRC is the *change source*; diffable is the *UI updater*.
 - Prefer rebuilding the snapshot on FRC changes (simple + correct).
 - Use `NSManagedObjectID` as the diffable item identifier.
