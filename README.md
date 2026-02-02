@@ -1,39 +1,40 @@
 # agents-appkit-uikit
 
-A small, instruction-driven repo for building **iOS (UIKit)** and **macOS (AppKit)** apps in Swift using **MVC** with shared logic in a **Core SPM package**. It is intentionally minimal and currently contains only contributor guidance (see `AGENTS.md`).
+A minimal, instruction‑driven sample repo for building **UIKit (iOS/iPadOS)** and **AppKit (macOS)** apps in Swift using **MVC**, with shared logic in a Core framework.
 
-## What this repo is for
+This repo is intentionally compact and focused on demonstrating a clean, native approach to multi‑platform apps without SwiftUI.
 
-- Demonstrating and enforcing local engineering conventions for UIKit/AppKit apps.
-- Keeping UI logic in controllers and business logic in side controllers/services.
-- Sharing platform-agnostic logic via Swift Package Manager (SPM).
+## What’s inside
 
-## Key principles (short version)
+- A single Xcode project with separate iOS and macOS targets
+- A shared Core framework for platform‑agnostic logic
+- UIKit/AppKit entry points and minimal resources
+- Guidance for contributors in `AGENTS.md`
 
-- **MVC**: View/ViewController wires UI; side controllers own data and business rules.
-- **Diffable data sources**: Snapshot-driven updates; stable identifiers only.
-- **Selection preservation**: Preserve by IDs, not index paths/rows.
-- **Auto Layout only**: Layout anchors + layout margins; no autoresizing masks.
-- **Liquid Glass UI**: Prefer system materials and translucency.
-- **SwiftUI is forbidden**: UIKit/AppKit only.
-- **Locale-aware formatting**: No `String(format:)` for numbers.
-- **Modern Swift**: `async/await`, `Task.sleep(for:)`, `URL.documentsDirectory`, etc.
-- **Tests required**: Logic changes must include deterministic unit tests.
-
-## Project structure (expected)
+## Project layout
 
 ```
-Apps/MyProduct-UIKit/<FeatureName>/...
-Apps/MyProduct-AppKit/<FeatureName>/...
-Packages/Core/Sources/<FeatureName>/...
-Packages/Core/Tests/<FeatureName>/Tests/...
+Code/
+  Core/
+  iOS/
+  macOS/
+Resources/
+  iOS/
+  macOS/
+Project.xcodeproj/
 ```
 
-## Source of truth
+## Goals
 
-The full, authoritative guidance lives in:
+- Keep UI logic in controllers and data/business logic in side controllers/services
+- Use diffable data sources and snapshot‑driven updates
+- Preserve platform‑native behaviors and accessibility
+- Keep shared code independent of UIKit/AppKit
 
-- `AGENTS.md`
+## Conventions
 
-If something in this README conflicts with `AGENTS.md`, treat `AGENTS.md` as the source of truth.
+Contributor conventions and detailed guidance live in `AGENTS.md`. If anything in this README conflicts with it, treat `AGENTS.md` as the source of truth.
 
+## License
+
+MIT (or your preferred license)
