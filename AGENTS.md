@@ -1,6 +1,7 @@
 # agents.md
 
 This repository builds **iOS (UIKit)** and **macOS (AppKit)** apps in **Swift** using **MVC**.
+iOS **always** includes iPadOS throughout these instructions.
 
 **Required:** The project may use a single multi‑destination target **or** separate iOS and macOS targets, depending on the repo layout. Follow the project’s existing target structure.
 
