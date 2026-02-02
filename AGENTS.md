@@ -69,6 +69,14 @@ Examples:
 
 ---
 
+## SF Symbols (required)
+
+- Use SF Symbols for all icons on iOS and macOS.
+- Do not add custom icon assets unless explicitly requested.
+- Prefer system-provided symbols with platform-appropriate weights and scales.
+
+---
+
 ## Logging
 
 - Use `OSLog` / `Logger` for app logging; avoid `print` except for temporary local debugging.
