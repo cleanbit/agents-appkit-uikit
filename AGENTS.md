@@ -4,19 +4,21 @@ This repository builds **iOS (UIKit)** and **macOS (AppKit)** apps in **Swift** 
 
 **Required:** The project may use a single multi‑destination target **or** separate iOS and macOS targets, depending on the repo layout. Follow the project’s existing target structure.
 
-### Target membership (file‑system synchronized groups)
-This project uses a file‑system synchronized `Code` group in Xcode. Platform filtering is handled via
-`PBXFileSystemSynchronizedBuildFileExceptionSet` in `Project.xcodeproj/project.pbxproj`.
+### Target membership (separate targets)
+This project uses separate iOS and macOS targets. Target membership is the primary gate for
+platform-specific files.
 
 Rules:
-- All files under `Code/iOS/**` must be **iOS‑only** via `platformFiltersByRelativePath`.
-- All files under `Code/macOS/**` must be **macOS‑only** via `platformFiltersByRelativePath`.
-- Duplicate filenames across iOS/macOS are allowed **only** when membership excludes the other platform.
-- Do **not** rely on `#if os(iOS)` / `#if os(macOS)` alone for platform‑only files; membership is required.
+- All files under `Code/iOS/**` must be members of the iOS target only.
+- All files under `Code/macOS/**` must be members of the macOS target only.
+- All shared, non-UI files under `Code/Core/**` must be members of the Core framework target.
+- Duplicate filenames across iOS/macOS are allowed only when membership excludes the other platform.
+- Do not rely on `#if os(iOS)` / `#if os(macOS)` alone for platform-only files; target membership is required.
 
-Example entries:
-- `iOS/Root/RootSplitViewController.swift = (ios, );`
-- `macOS/Root/RootSplitViewController.swift = (macos, );`
+Example membership:
+- iOS target: `Code/iOS/Root/RootSplitViewController.swift`
+- macOS target: `Code/macOS/Root/RootSplitViewController.swift`
+- Core target: `Code/Core/Users/UsersController.swift`
 
 ### Platform entry points & platform-only files
 
