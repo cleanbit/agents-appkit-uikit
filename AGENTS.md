@@ -2,11 +2,39 @@
 
 This repository builds **iOS (UIKit)** and **macOS (AppKit)** apps in **Swift** using **MVC**.
 
-**Required:** The project must use a single app target that supports multiple destinations (iOS + macOS). Separate iOS and macOS targets are prohibited.
+**Required:** The project may use a single multi‑destination target **or** separate iOS and macOS targets, depending on the repo layout. Follow the project’s existing target structure.
 
-**Clarification:** While there is only one app target, individual files may use **target membership** to limit platform-specific code (iOS vs macOS) when necessary.
+### Target membership (file‑system synchronized groups)
+This project uses a file‑system synchronized `Code` group in Xcode. Platform filtering is handled via
+`PBXFileSystemSynchronizedBuildFileExceptionSet` in `Project.xcodeproj/project.pbxproj`.
 
-**Required:** Storyboards and XIBs are not allowed. All UI must be created programmatically.
+Rules:
+- All files under `Code/iOS/**` must be **iOS‑only** via `platformFiltersByRelativePath`.
+- All files under `Code/macOS/**` must be **macOS‑only** via `platformFiltersByRelativePath`.
+- Duplicate filenames across iOS/macOS are allowed **only** when membership excludes the other platform.
+- Do **not** rely on `#if os(iOS)` / `#if os(macOS)` alone for platform‑only files; membership is required.
+
+Example entries:
+- `iOS/Root/RootSplitViewController.swift = (ios, );`
+- `macOS/Root/RootSplitViewController.swift = (macos, );`
+
+### Platform entry points & platform-only files
+
+- **macOS must use `MainMenu.xib`**; keep it in the macOS target and do not remove it.
+- **iOS must use UIScene** (`UISceneDelegate` / `SceneDelegate`); do not drive iOS lifecycle solely from `UIApplicationDelegate`.
+- **AppDelegate files are per‑platform**: separate iOS and macOS `AppDelegate` files with target membership set to their platform.
+- **Do not use `#if os()` for whole files**; only use small, localized branches when sharing a file is unavoidable.
+- Target membership is the primary gate for platform‑specific files; do not rely on `#if os()` alone.
+
+### Localization (xcstrings)
+
+- Use `Resources/Localizable.xcstrings` as the single source of localized strings.
+- Do not add `.strings` or `.stringsdict` files unless explicitly requested.
+
+**Required:** Storyboards and XIBs are not allowed **except**:
+- iOS: `Resources/iOS/Base.lproj/Main.storyboard` and `Resources/iOS/Base.lproj/LaunchScreen.storyboard`.
+- macOS: `Resources/macOS/Base.lproj/MainMenu.xib` (must be kept and used).
+All other UI must be created programmatically.
 
 **Controllers coordinate. Logic lives on the side.**
 - View/ViewController: UI setup, event wiring, snapshot application, navigation.
@@ -21,7 +49,43 @@ This repository builds **iOS (UIKit)** and **macOS (AppKit)** apps in **Swift** 
 - **Keep diffs small** and scoped to the task.
 - **Main-thread UI**: UI updates happen on the main thread (`@MainActor` where appropriate).
 - **Accessibility**: don’t regress labels, keyboard navigation (macOS), selection/focus behavior.
+- **Xcode builds/runs**: All Xcode build/run actions must use **XcodeBuildMCP**; do not invoke `xcodebuild` directly.
 - **No drive‑by refactors** unless explicitly requested.
+
+---
+
+## Most Native = Best UX
+
+- Prefer platform-standard controls and behaviors; don’t fight UIKit/AppKit defaults.
+- Keep navigation and command placement aligned with platform conventions.
+- Respect keyboard shortcuts, focus rings, and selection behavior on macOS.
+- Avoid “one-size-fits-all” UI that ignores platform idioms.
+
+Examples:
+- Use native context menus instead of custom popovers.
+- Prefer standard toolbar items on macOS over bespoke header buttons.
+
+---
+
+## Logging
+
+- Use `OSLog` / `Logger` for app logging; avoid `print` except for temporary local debugging.
+- Prefer logging in side controllers/services; UI classes should log only UI lifecycle/navigation when needed.
+- Always use subsystem + category; keep categories consistent and feature-scoped.
+- Never log secrets or PII; use privacy annotations (`privacy: .private`) for user data.
+
+Example:
+
+```swift
+import OSLog
+
+private let logger = Logger(
+    subsystem: Bundle.main.bundleIdentifier ?? "App",
+    category: "Networking"
+)
+
+logger.info("Loaded \(count, privacy: .public) items")
+```
 
 ---
 
@@ -332,34 +396,41 @@ All UI must be built with:
 - **AppKit** on macOS
 
 This is a deliberate architectural choice. Respect it.
+(Exceptions require an explicit, written request in the task/PR description.)
 
 ---
 
-## Shared / reusable code (SPM requirement)
+## Shared / reusable code (Core framework requirement)
 
-All **shareable, non‑UI code** must live in a **separate Swift Package Manager (SPM) module**.
+All **shareable, non‑UI code** must live in the **Core framework target** under `Code/Core`.
 
-### What goes into the shared SPM package
-- domain models
+### What goes into the Core framework target
+- domain models (pure Swift structs/enums)
+- services (protocols + implementations that are platform‑agnostic)
 - business logic
 - networking clients
 - persistence layers
 - Core Data stacks (model + helpers)
 - parsing / formatting
+- state/transformation functions
 - side controllers (e.g. `UsersController`)
 - utilities that are platform‑agnostic
 
-### What must NOT go into the shared package
+### What must NOT go into the Core framework target
 - UIKit code
 - AppKit code
 - view controllers
 - views, cells, layout code
-- platform‑specific behavior
+- platform‑specific behavior (menus, windows, clipboard, drag/drop)
+- any UI layer code
 
 ### Rules
-- UI targets depend on the shared SPM package.
-- The shared package must not depend on UIKit or AppKit.
-- Conditional compilation (`#if os(iOS)`) inside the shared package is discouraged and must be justified.
+- UI targets depend on the Core framework target.
+- The Core framework target must not depend on UIKit or AppKit.
+- Conditional compilation (`#if os(iOS)`) inside the Core framework target is discouraged and must be justified.
+- If you write code that is used by both iOS and macOS, it **must** go into the Core framework target.
+- If you add a new cross-platform type, add it to Core first and import it from the app targets.
+- Do not introduce “shared UI” abstractions to force UIKit/AppKit into one API.
 
 This keeps core logic testable, reusable, and independent of UI frameworks.
 
@@ -373,15 +444,16 @@ This keeps core logic testable, reusable, and independent of UI frameworks.
 
 ### Structure
 - Use a consistent project structure with folder layout determined by **app features** (feature-first), not by file type.
-- **Required**: Internal SPM packages must be integrated as local, in-repo packages and edited from within the same Xcode project. Remote Git dependencies are reserved for third-party libraries only.
+- **Required**: Internal shared framework targets must be integrated as local, in-repo targets and edited from within the same Xcode project. Remote Git dependencies are reserved for third-party libraries only.
 
-Suggested high-level layout:
+Layout (current project layout takes precedence):
 
-- `Code/macOS/<FeatureName>/...`
-- `Code/iOS/<FeatureName>/...`
-- `Code/UserInterface/<FeatureName>/...` - if possible to reuse some element (e.g. CALayer)
-- `Packages/Core/Sources/<FeatureName>/...`
-- `Packages/Core/Tests/<FeatureName>/Tests/...`
+- `Code/Core/<FeatureName>/...` for shared, platform-agnostic code
+- `Code/iOS/<FeatureName>/...` for UIKit screens and iOS-specific code
+- `Code/macOS/<FeatureName>/...` for AppKit screens and macOS-specific code
+- `Resources/iOS/Base.lproj/Main.storyboard`
+- `Resources/iOS/Base.lproj/LaunchScreen.storyboard`
+- `Resources/macOS/Base.lproj/MainMenu.xib`
 
 ### Naming conventions (strict)
 - Follow strict naming conventions for:
@@ -398,50 +470,13 @@ Suggested high-level layout:
 
 ### Comments and documentation
 - Add comments where intent is non-obvious or when a decision has tradeoffs.
-- Use doc comments (`///`) for public APIs, Core package types, and non-trivial helpers.
+- Use doc comments (`///`) for public APIs, Core framework types, and non-trivial helpers.
 - Do not comment obvious code.
 
 ### Secrets
 - Never commit secrets (API keys, tokens, credentials) into the repository.
 - Use configuration files excluded from git, build settings, environment variables, or the platform keychain as appropriate.
 
-
-## SwiftUI is forbidden
-
-This repository is **UIKit + AppKit only**.
-
-- **Do not add SwiftUI views** (`SwiftUI.View`) anywhere.
-- **Do not add `UIHostingController` / `NSHostingController`**.
-- **Do not add SwiftUI previews**.
-- If a feature seems easier in SwiftUI, implement it in UIKit/AppKit instead.
-
-(Exceptions require an explicit, written request in the task/PR description.)
-
----
-
-## Shared core must live in a separate Swift Package
-
-All shareable, platform-agnostic code must live in a dedicated **Swift Package Manager (SPM)** module (the “Core” package), not inside app targets.
-
-### Put in Core (SPM)
-- domain models (pure Swift structs/enums)
-- services (protocols + implementations that are platform-agnostic)
-- networking/persistence logic that does not depend on UIKit/AppKit
-- parsing/formatting utilities
-- state/transformation functions
-
-### Keep out of Core
-- UIKit/AppKit types (`UIView`, `NSView`, `UIViewController`, `NSViewController`, etc.)
-- platform UX behaviors (menus, windows, clipboard, drag/drop)
-- any UI layer code
-
-### Rules for agents
-- If you write code that is used by both iOS and macOS, it **must** go into the Core SPM package.
-- If you add a new cross-platform type, add it to Core first and import it from the app targets.
-- Do not introduce “shared UI” abstractions to force UIKit/AppKit into one API.
-
-
----
 
 ## Tests are required
 
@@ -451,7 +486,7 @@ Changes must include appropriate tests.
 - **Unit tests** for:
   - side controllers (loaders, managers)
   - data shaping (grouping, sectioning, sorting)
-  - Core logic in the shared Core SPM package
+  - Core logic in the shared Core framework target
 - Tests must be **deterministic**:
   - no real network
   - no real file system
@@ -499,7 +534,7 @@ This project adopts **Liquid Glass** design principles.
 ### Structure
 - Use a **feature-based folder structure** (by screen/feature), not by technical layer.
 - Keep UIKit/AppKit code inside the app targets only.
-- Keep shareable, platform-agnostic code in the **Core SPM package**.
+- Keep shareable, platform-agnostic code in the **Core framework target**.
 
 ### Files
 - **One primary type per Swift file**.
@@ -528,7 +563,7 @@ This project adopts **Liquid Glass** design principles.
 
 - Unit tests are the default and expected.
 - UI tests should only be added when unit tests are not feasible.
-- Core logic must always be unit-tested (especially code in the Core SPM package).
+- Core logic must always be unit-tested (especially code in the Core framework target).
 
 ---
 
@@ -554,7 +589,7 @@ This project adopts **Liquid Glass** design principles.
 - Use `NumberFormatter` for reusable or more complex formatting needs.
 
 ### Notes
-- This rule applies to **UIKit**, **AppKit**, and **shared Core (SPM)** code.
+- This rule applies to **UIKit**, **AppKit**, and **shared Core framework** code.
 - SwiftUI examples of formatting may appear in external documentation, but **SwiftUI itself is forbidden** in this repository.
 
 ---
@@ -574,7 +609,7 @@ This project adopts **Liquid Glass** design principles.
 try await Task.sleep(for: .seconds(1))
 ```
 
-This rule applies to UIKit, AppKit, and shared Core (SPM) code.
+This rule applies to UIKit, AppKit, and shared Core framework code.
 
 ---
 
@@ -602,7 +637,7 @@ This rule applies to UIKit, AppKit, and shared Core (SPM) code.
   - `url.appending(path:)` instead of string-based path concatenation
 - Avoid legacy APIs that rely on stringly-typed paths or implicit assumptions.
 
-These rules apply to UIKit, AppKit, and shared Core (SPM) code.
+These rules apply to UIKit, AppKit, and shared Core framework code.
 
 ---
 

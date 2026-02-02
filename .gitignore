@@ -3,11 +3,13 @@
 # Xcode
 DerivedData/
 *.xcuserstate
-*.xcuserdata/
+xcuserdata/
+*.xcuserdatad/
 *.moved-aside
-*.xcuserdatad
 *.xccheckout
 *.xcscmblueprint
+*.xcresult
+*.xcarchive
 
 # Build artifacts
 build/
@@ -22,3 +24,21 @@ build/
 # Playgrounds
 timeline.xctimeline
 playground.xcworkspace
+
+# Tooling
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# SwiftLint
+.swiftlint_cache
+.swiftlint_cache/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+fastlane/logs/
