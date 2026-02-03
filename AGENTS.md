@@ -534,13 +534,8 @@ final class UsersController: NSObject, NSFetchedResultsControllerDelegate {
 
     typealias ResultType = User
 
-    enum SectionID: String, Hashable {
-        case online
-        case offline
-    }
-
     struct Section: Hashable {
-        let id: SectionID
+        let id: UUID
         let users: [User]
     }
 
