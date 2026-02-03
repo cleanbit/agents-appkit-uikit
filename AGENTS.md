@@ -44,6 +44,18 @@ All other UI must be created programmatically.
 - Side controllers/services: loading, mutation, grouping/sectioning, business rules.
 - No architecture crusades. No mandatory view models.
 
+**Backend is isolated from UI.**
+- Backend/networking code must be usable without any UI layer.
+- Backend code must not reference UIKit/AppKit or view controllers.
+
+**Model → UI updates are queued.**
+- Side controllers may notify changes from any thread; UI must pull state and apply updates on the main thread.
+- Coalesce or dedupe change notifications; avoid per-item UI pushes.
+
+**UI updates are pull-based.**
+- On change notifications, view controllers query the side controller and rebuild snapshots.
+- UI does not receive precomputed view models from the model layer.
+
 ---
 
 ## Non‑negotiables
