@@ -387,6 +387,7 @@ Core Data lists use **`NSFetchedResultsController`** for change notifications, t
 ### Rules
 - If a controller’s underlying data is Core Data, it must use `NSFetchedResultsController` for change tracking. Keep the controller’s public API stable (e.g., `willChange`, `didChange`, sectioned data model) and avoid exposing FRC types to UI.
 - FRC is the *change source*; diffable is the *UI updater*.
+- Sectioning may be derived manually in the side controller for diffable snapshots. Do not expose `frc.sections` directly to UI unless you are intentionally using `sectionNameKeyPath`-driven sections.
 - Prefer rebuilding the snapshot on FRC changes (simple + correct).
 - Use `NSManagedObjectID` as the diffable item identifier.
 - Preserve selection by `NSManagedObjectID`.
@@ -533,17 +534,23 @@ final class UsersController: NSObject, NSFetchedResultsControllerDelegate {
 
     typealias ResultType = User
 
+    enum SectionID: String, Hashable {
+        case online
+        case offline
+    }
+
+    struct Section: Hashable {
+        let id: SectionID
+        let users: [User]
+    }
+
     private let frc: NSFetchedResultsController<User>
 
-    var sections: [any NSFetchedResultsSectionInfo]? {
-        frc.sections
-    }
+    private(set) var sections: [Section] = []
 
     var fetchedObjects: [ResultType]? {
         frc.fetchedObjects
     }
-
-    private(set) var users: [Section] = []
 
     var willChange: (() -> Void)?
     var didChange: (() -> Void)?
@@ -556,6 +563,7 @@ final class UsersController: NSObject, NSFetchedResultsControllerDelegate {
 
     func load() throws {
         try frc.performFetch()
+        rebuildSections()
     }
 
     func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
@@ -563,24 +571,44 @@ final class UsersController: NSObject, NSFetchedResultsControllerDelegate {
     }
 
     func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        rebuildSections()
         didChange?()
     }
 
     func object(at indexPath: IndexPath) -> ResultType {
-        frc.object(at: indexPath)
+        sections[indexPath.section].users[indexPath.item]
     }
 
     func indexPath(forObject object: ResultType) -> IndexPath? {
-        frc.indexPath(forObject: object)
+        for (sectionIndex, section) in sections.enumerated() {
+            if let itemIndex = section.users.firstIndex(where: { $0.objectID == object.objectID }) {
+                return IndexPath(item: itemIndex, section: sectionIndex)
+            }
+        }
+        return nil
+    }
+
+    private func rebuildSections() {
+        let users = frc.fetchedObjects ?? []
+        let grouped = Dictionary(grouping: users, by: sectionID(for:))
+        let orderedIDs: [SectionID] = [.online, .offline]
+        sections = orderedIDs.compactMap { id in
+            guard let users = grouped[id] else { return nil }
+            return Section(id: id, users: users)
+        }
+    }
+
+    private func sectionID(for user: User) -> SectionID {
+        // Replace with your domain grouping logic.
+        user.isOnline ? .online : .offline
     }
 }
 ```
 
-### Notes on sectioned FRC
-If you use `sectionNameKeyPath`, you can:
-- use section identifiers derived from `frc.sections?.map { $0.name }`
-- append items per section in the same order
-- keep identifiers stable (section name strings are typically stable enough)
+### Notes on sectioning with FRC
+- FRC remains the change source for Core Data lists; diffable snapshots still drive the UI.
+- If you use `sectionNameKeyPath`, derive section identifiers from `frc.sections?.map { $0.name }` and append items in that order.
+- If you need custom sectioning, derive sections inside the side controller and expose a controller-owned `sections` model instead of `frc.sections`.
 
 ---
 
