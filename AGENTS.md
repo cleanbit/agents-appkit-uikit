@@ -492,7 +492,7 @@ Layout (current project layout takes precedence):
 
 ## Tests are required
 
-Changes must include appropriate tests.
+Changes must include **both unit and UI tests**.
 
 ### Required
 - **Unit tests** for:
@@ -505,14 +505,14 @@ Changes must include appropriate tests.
   - no reliance on current time without injection
 
 ### UI tests
-- Add UI tests only for:
-  - critical user flows
-  - regressions that cannot be covered by unit tests
+- UI tests are required for every change.
 - Do not add fragile screenshot-based tests unless explicitly requested.
 
 ### Rules for agents
-- If logic is added or changed, tests must be added or updated.
-- If tests are not feasible, the PR must explicitly explain why.
+- If logic is added or changed, tests (unit and UI) must be added or updated.
+- Tests must be run after every code change.
+- All test runs must use **XcodeBuildMCP**.
+- If tests are not feasible, stop and ask for explicit written approval before proceeding.
 
 ---
 
@@ -573,8 +573,9 @@ This project adopts **Liquid Glass** design principles.
 
 ## Testing rules (reinforced)
 
-- Unit tests are the default and expected.
-- UI tests should only be added when unit tests are not feasible.
+- Unit tests are required for all changes.
+- UI tests are required for all changes.
+- Tests must be updated and run after every code change using **XcodeBuildMCP**.
 - Core logic must always be unit-tested (especially code in the Core framework target).
 
 ---
