@@ -135,14 +135,12 @@ Side controllers own the canonical data and notify the UI about changes. They ex
 - `didChange`: called **after** data is updated
 - a sectioned property (ordered)
 
-### Canonical section model (recommended)
+### UsersController example (non-Core Data)
 Use ordered sections to avoid dictionary-order surprises:
 
 ```swift
 @MainActor
 final class UsersController {
-
-    enum SectionID: Hashable { case online, offline }
 
     struct User: Hashable {
         let id: UUID
@@ -150,15 +148,72 @@ final class UsersController {
         let isOnline: Bool
     }
 
+    typealias ResultType = User
+
+    enum SectionID: Hashable {
+        case online
+        case offline
+
+        var name: String {
+            switch self {
+            case .online:
+                return "online"
+            case .offline:
+                return "offline"
+            }
+        }
+    }
+
+    final class SectionInfo: NSObject, NSFetchedResultsSectionInfo {
+        let name: String
+        let indexTitle: String?
+        private let items: [ResultType]
+
+        var numberOfObjects: Int { items.count }
+        var objects: [Any]? { items }
+
+        init(name: String, indexTitle: String? = nil, items: [ResultType]) {
+            self.name = name
+            self.indexTitle = indexTitle
+            self.items = items
+        }
+    }
+
     struct Section {
         let id: SectionID
         let users: [User]
+    }
+
+    var sections: [any NSFetchedResultsSectionInfo]? {
+        users.map { section in
+            SectionInfo(
+                name: section.id.name,
+                items: section.users
+            )
+        }
+    }
+
+    var fetchedObjects: [ResultType]? {
+        users.flatMap(\.users)
     }
 
     private(set) var users: [Section] = []   // property may include sections
 
     var willChange: (() -> Void)?
     var didChange: (() -> Void)?
+
+    func object(at indexPath: IndexPath) -> ResultType {
+        users[indexPath.section].users[indexPath.item]
+    }
+
+    func indexPath(forObject object: ResultType) -> IndexPath? {
+        for (sectionIndex, section) in users.enumerated() {
+            if let itemIndex = section.users.firstIndex(of: object) {
+                return IndexPath(item: itemIndex, section: sectionIndex)
+            }
+        }
+        return nil
+    }
 
     func setUsers(_ sections: [Section]) {
         willChange?()
@@ -324,52 +379,53 @@ Core Data lists use **`NSFetchedResultsController`** for change notifications, t
 - Use `NSManagedObjectID` as the diffable item identifier.
 - Preserve selection by `NSManagedObjectID`.
 
-### UIKit table example (FRC → snapshot)
+### UsersController example (Core Data via FRC)
 
 ```swift
-final class MessagesViewController: UITableViewController, NSFetchedResultsControllerDelegate {
+@MainActor
+final class UsersController: NSObject, NSFetchedResultsControllerDelegate {
 
-    enum SectionID: Hashable { case main } // or use frc.sections for multiple sections
+    typealias ResultType = User
 
-    private var dataSource: UITableViewDiffableDataSource<SectionID, NSManagedObjectID>!
-    private var frc: NSFetchedResultsController<Message>!
+    private let frc: NSFetchedResultsController<User>
 
-    private var pendingSelectedIDs: [NSManagedObjectID] = []
+    var sections: [any NSFetchedResultsSectionInfo]? {
+        frc.sections
+    }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // configure table + dataSource here...
+    var fetchedObjects: [ResultType]? {
+        frc.fetchedObjects
+    }
 
-        frc.delegate = self
-        try? frc.performFetch()
-        reloadFromFRC()
+    private(set) var users: [Section] = []
+
+    var willChange: (() -> Void)?
+    var didChange: (() -> Void)?
+
+    init(frc: NSFetchedResultsController<User>) {
+        self.frc = frc
+        super.init()
+        self.frc.delegate = self
+    }
+
+    func load() throws {
+        try frc.performFetch()
     }
 
     func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        pendingSelectedIDs = tableView.indexPathsForSelectedRows?
-            .compactMap { dataSource.itemIdentifier(for: $0) } ?? []
+        willChange?()
     }
 
     func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
-        reloadFromFRC(preserveSelection: true)
+        didChange?()
     }
 
-    private func reloadFromFRC(animated: Bool = true, preserveSelection: Bool = false) {
-        let objects = frc.fetchedObjects ?? []
+    func object(at indexPath: IndexPath) -> ResultType {
+        frc.object(at: indexPath)
+    }
 
-        var snapshot = NSDiffableDataSourceSnapshot<SectionID, NSManagedObjectID>()
-        snapshot.appendSections([.main])
-        snapshot.appendItems(objects.map { $0.objectID }, toSection: .main)
-
-        dataSource.apply(snapshot, animatingDifferences: animated) { [weak self] in
-            guard let self, preserveSelection else { return }
-            for id in pendingSelectedIDs {
-                if let ip = dataSource.indexPath(for: id) {
-                    tableView.selectRow(at: ip, animated: false, scrollPosition: .none)
-                }
-            }
-            pendingSelectedIDs.removeAll()
-        }
+    func indexPath(forObject object: ResultType) -> IndexPath? {
+        frc.indexPath(forObject: object)
     }
 }
 ```
