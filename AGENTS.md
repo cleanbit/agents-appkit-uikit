@@ -379,6 +379,140 @@ Core Data lists use **`NSFetchedResultsController`** for change notifications, t
 - Use `NSManagedObjectID` as the diffable item identifier.
 - Preserve selection by `NSManagedObjectID`.
 
+### Active Record Pattern (Core Data Required)
+- Core Data entities must expose Active Record helpers directly on the entity (class or extension).
+- Every action must have two methods: one that accepts `NSManagedObjectContext`, and one that uses the main context.
+- Context-free methods must delegate to the context-aware method using the main context.
+- Main context must come from an `NSPersistentContainer` (for example, `container.viewContext`).
+- Use typed errors (`enum`) for CRUD failures and wrap Core Data errors.
+- Context-aware methods must use `context.perform` or `context.performAndWait` for queue confinement.
+
+Example: main context creation with `NSPersistentContainer`
+
+```swift
+final class CoreDataStack {
+
+    static let shared = CoreDataStack(modelName: "Model")
+
+    let container: NSPersistentContainer
+
+    var mainContext: NSManagedObjectContext { container.viewContext }
+
+    init(modelName: String) {
+        container = NSPersistentContainer(name: modelName)
+        container.loadPersistentStores { _, error in
+            if let error {
+                fatalError("Core Data store failed: \(error)")
+            }
+        }
+    }
+}
+```
+
+Example: entity Active Record helpers with paired methods
+
+```swift
+enum ActiveRecordError: Error {
+    case fetchFailed(Error)
+    case saveFailed(Error)
+}
+
+extension User {
+
+    static var mainContext: NSManagedObjectContext {
+        CoreDataStack.shared.mainContext
+    }
+
+    static func fetch(in context: NSManagedObjectContext) throws -> [User] {
+        var results: [User] = []
+        var caughtError: Error?
+        context.performAndWait {
+            let request: NSFetchRequest<User> = User.fetchRequest()
+            do {
+                results = try context.fetch(request)
+            } catch {
+                caughtError = error
+            }
+        }
+        if let caughtError {
+            throw ActiveRecordError.fetchFailed(caughtError)
+        }
+        return results
+    }
+
+    static func fetch() throws -> [User] {
+        try fetch(in: mainContext)
+    }
+
+    static func find(objectID: NSManagedObjectID, in context: NSManagedObjectContext) -> User? {
+        var result: User?
+        context.performAndWait {
+            result = context.object(with: objectID) as? User
+        }
+        return result
+    }
+
+    static func find(objectID: NSManagedObjectID) -> User? {
+        find(objectID: objectID, in: mainContext)
+    }
+
+    static func insert(in context: NSManagedObjectContext) -> User {
+        User(context: context)
+    }
+
+    static func insert() -> User {
+        insert(in: mainContext)
+    }
+
+    func save(in context: NSManagedObjectContext) throws {
+        var caughtError: Error?
+        context.performAndWait {
+            do {
+                if context.hasChanges {
+                    try context.save()
+                }
+            } catch {
+                caughtError = error
+            }
+        }
+        if let caughtError {
+            throw ActiveRecordError.saveFailed(caughtError)
+        }
+    }
+
+    func save() throws {
+        try save(in: Self.mainContext)
+    }
+
+    func delete(in context: NSManagedObjectContext) {
+        context.performAndWait {
+            context.delete(self)
+        }
+    }
+
+    func delete() {
+        delete(in: Self.mainContext)
+    }
+}
+```
+
+### FRC setup (uses Active Record main context)
+
+```swift
+let request: NSFetchRequest<User> = User.fetchRequest()
+request.sortDescriptors = [NSSortDescriptor(keyPath: \User.name, ascending: true)]
+
+let frc = NSFetchedResultsController(
+    fetchRequest: request,
+    managedObjectContext: User.mainContext,
+    sectionNameKeyPath: nil,
+    cacheName: nil
+)
+```
+
+Use entity fetch requests for FRC wiring. Active Record `fetch()` is for direct loads,
+not for building an `NSFetchedResultsController`.
+
 ### UsersController example (Core Data via FRC)
 
 ```swift
