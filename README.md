@@ -9,19 +9,20 @@ This repo is intentionally compact and focused on demonstrating a clean, native 
 - A single Xcode project with separate iOS and macOS targets
 - A shared Core framework for platform‑agnostic logic
 - UIKit/AppKit entry points and minimal resources
-- Guidance for contributors in `AGENTS.md`
+- Contributor rules in `AGENTS.md` with detailed repo skills in `.agents/skills`
 
 ## Project layout
 
-```
-Code/
-  Core/
-  iOS/
-  macOS/
-Resources/
-  iOS/
-  macOS/
-Project.xcodeproj/
+```text
+Project/
+  Code/
+    Core/
+    iOS/
+    macOS/
+  Resources/
+    iOS/
+    macOS/
+  Project.xcodeproj/
 ```
 
 ## Goals
@@ -33,7 +34,7 @@ Project.xcodeproj/
 
 ## Conventions
 
-Contributor conventions and detailed guidance live in `AGENTS.md`. If anything in this README conflicts with it, treat `AGENTS.md` as the source of truth.
+Contributor conventions live in `AGENTS.md`, with detailed rules split into repo skills under `.agents/skills`. If anything in this README conflicts with `AGENTS.md`, treat `AGENTS.md` as the source of truth.
 
 ## License
 
