@@ -1,11 +1,11 @@
 ---
 name: layout-autolayout
-description: Auto Layout and Liquid Glass rules for UIKit/AppKit layouts, margins, stack views, and system materials.
+description: Auto Layout rules for UIKit/AppKit layouts, margins, and stack views.
 metadata:
-  short-description: Auto Layout and Liquid Glass rules for UIKit/AppKit UI work.
+  short-description: Auto Layout rules for UIKit/AppKit UI work.
 ---
 
-# Layout and Liquid Glass
+# Auto Layout
 
 Use this skill for UI layout or visual styling work on UIKit or AppKit.
 
@@ -66,21 +66,5 @@ view.layoutMarginsGuide.bottomAnchor
 - Prefer system controls over custom drawing to preserve native focus/selection behavior.
 - Custom views should size via constraints and subview intrinsic sizes, never by overriding intrinsicContentSize.
 
-## Liquid Glass (Required for UI Work)
-- Prefer system materials (UIBlurEffect, NSVisualEffectView) where appropriate.
-- Respect translucency, depth, and layering.
-- Avoid hard, opaque backgrounds unless required for readability.
-- Use dynamic system colors; avoid hard-coded colors.
-- Motion and transitions should be subtle and platform-appropriate.
-
-### UIKit
-- Use system-provided materials and vibrancy where applicable.
-- Avoid custom blur implementations.
-
-### AppKit
-- Prefer NSVisualEffectView for backgrounds and containers.
-- Ensure vibrancy works correctly with text and selection.
-
-### Rule
-- UI changes must not break Liquid Glass aesthetics.
-- If a design deviates from Liquid Glass, the reason must be explicit.
+## Liquid Glass
+- Follow the `liquid-glass-design` skill for Liquid Glass behavior and APIs on UIKit/AppKit.
