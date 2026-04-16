@@ -1,0 +1,4 @@
+interface:
+  display_name: "AppKit UIKit Expert"
+  short_description: "Native UIKit and AppKit MVC guidance"
+  default_prompt: "Use $appkit-uikit-expert-skill to review or implement native UIKit/AppKit MVC code."
